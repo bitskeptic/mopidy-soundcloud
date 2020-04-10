@@ -49,9 +49,15 @@ class SoundCloudLibraryProvider(backend.LibraryProvider):
     def add_to_vfs(self, _model):
         self.vfs["soundcloud:directory"][_model.uri] = _model
 
-    def list_sets(self):
+    def list_following_options(self, user_id):
+        following_options = collections.OrderedDict()
+        following_options["following_tracks"] = new_folder("Following Tracks", ["following_tracks", user_id])
+        following_options["following_sets"] = new_folder("Following Sets", ["following_sets", user_id])
+        return list(following_options.values())
+
+    def list_sets(self, user_id=None):
         sets_vfs = collections.OrderedDict()
-        for (name, set_id, _tracks) in self.backend.remote.get_sets():
+        for (name, set_id, _tracks) in self.backend.remote.get_sets(user_id):
             sets_list = new_folder(name, ["sets", set_id])
             logger.debug(f"Adding set {sets_list.name} to VFS")
             sets_vfs[set_id] = sets_list
@@ -99,6 +105,11 @@ class SoundCloudLibraryProvider(backend.LibraryProvider):
             # Following
             if "following" == req_type:
                 if res_id:
+                    return self.list_following_options(res_id)
+                else:
+                    return self.list_user_follows()
+            if "following_tracks" == req_type:
+                if res_id:
                     return self.tracklist_to_vfs(
                         self.backend.remote.get_tracks(res_id)
                     )
@@ -112,6 +123,13 @@ class SoundCloudLibraryProvider(backend.LibraryProvider):
                 return self.tracklist_to_vfs(
                     self.backend.remote.get_user_stream()
                 )
+            if "following_sets" == req_type:
+                if res_id:
+                    return self.tracklist_to_vfs(
+                        self.backend.remote.get_sets(res_id)
+                    )
+                else:
+                    return self.list_user_follows()
 
         # root directory
         return list(self.vfs.get(uri, {}).values())
